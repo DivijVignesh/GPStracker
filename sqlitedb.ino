@@ -1,16 +1,26 @@
+#include <ArduinoJson.h>
+
+StaticJsonDocument<5000> doc; 
+JsonArray array ;
+String obj;
    
    sqlite3 *db1;
    sqlite3 *db2;
+   
 //   char *zErrMsg = 0;
+
    int rc;
 const char* data = "Callback function called";
 static int callback(void *data, int argc, char **argv, char **azColName){
+  JsonObject object = doc.createNestedObject(); // JSON objects for NAME and VALUE of the counter
    int i;
    Serial.printf("%s: ", (const char*)data);
    for (i = 0; i<argc; i++){
+        object[(String)azColName[i]]=(String)argv[i];
        Serial.printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
    }
    Serial.printf("\n");
+
    return 0;
 }
 
@@ -41,8 +51,8 @@ int db_exec(sqlite3 *db, const char *sql) {
    return rc;
 }
 
-void db_init(String latt,String lon,String battery,String speed,String uploaded,String dat,String time,String batchID){
-	sno++;
+void db_init(String latt,String lon,String battery,String speed,String uploaded,String datetime,String batchID){
+  sno++;
 
 SPI.begin();
 SD.begin();
@@ -55,28 +65,44 @@ sqlite3_initialize();
    if (openDb("/sd/mdr512.db", &db2))
        return;
 
-     rc = db_exec(db1, "CREATE TABLE IF NOT EXISTS dataTableA (Sno INTEGER PRIMARY KEY, Date TEXT , Time TEXT , lat TEXT ,long TEXT , Speed TEXT , Deviceid TEXT , battery TEXT , upload TEXT , BatchID TEXT )");
+     rc = db_exec(db1, "CREATE TABLE IF NOT EXISTS TableA (Sno INTEGER PRIMARY KEY, DeviceDate TEXT , lat TEXT ,longitude TEXT , Speed TEXT , Deviceid TEXT , battery TEXT , upload TEXT , BatchID TEXT )");
    if (rc != SQLITE_OK) {
        sqlite3_close(db1);
        sqlite3_close(db2);
        return;
    }
-  rc = db_exec(db1, "CREATE TABLE IF NOT EXISTS dataTableB (Sno INTEGER PRIMARY KEY, Date TEXT , Time TEXT , lat TEXT ,long TEXT , Speed TEXT , Deviceid TEXT , battery TEXT , upload TEXT , BatchID TEXT )");
+  rc = db_exec(db1, "CREATE TABLE IF NOT EXISTS TableB (Sno INTEGER PRIMARY KEY, DeviceDate TEXT , lat TEXT ,longitude TEXT , Speed TEXT , Deviceid TEXT , battery TEXT , upload TEXT , BatchID TEXT )");
    if (rc != SQLITE_OK) {
        sqlite3_close(db1);
        sqlite3_close(db2);
        return;
    }
 
-    dbInsert(latt,lon,battery,speed,uploaded,dat,time,batchID);
+    dbInsert(latt,lon,battery,speed,uploaded,datetime,batchID);
+//    dbSelect();
 
 }
+void dbSelect(){
+  int rc;
+  array = doc.to<JsonArray>();
+     rc = db_exec(db1, "Select * from TableB order by Sno DESC LIMIT 2 ");
+      serializeJsonPretty(array,obj);
+   Serial.println(obj);
+   if (rc != SQLITE_OK) {
+       sqlite3_close(db1);
+       sqlite3_close(db2);
+       return;
+   }
+      sqlite3_close(db1);
+   sqlite3_close(db2);
+}
  
-void dbInsert(String latt,String lon,String battery,String speed,String uploaded,String dat,String time,String batchID)
+void dbInsert(String latt,String lon,String battery,String speed,String uploaded,String datetime,String batchID)
 {
+array = doc.to<JsonArray>();
   batchID=batch;
   int rc,rcB;
-	String sql= "INSERT INTO dataTableA(Date,Time,lat,long,Speed,Deviceid,battery,upload,BatchID ) VALUES ('"+(String)dat+"','"+(String)time+"','"+(String)latt+"','"+(String)lon+"','"+(String)speed+"','12345678','"+(String)battery+"','"+(String)uploaded+"','"+(String)batchID+"')"; 
+  String sql= "INSERT INTO TableA(DeviceDate,lat,longitude,Speed,Deviceid,battery,upload,BatchID ) VALUES ('"+(String)datetime+"','"+(String)latt+"','"+(String)lon+"','"+(String)speed+"','12345678','"+(String)battery+"','"+(String)uploaded+"','"+(String)batchID+"')"; 
 Serial.println(sql);
 // Length (with one extra character for the null terminator)
 int str_len = sql.length() + 1; 
@@ -87,7 +113,7 @@ char sqlQuery[str_len];
 // Copy it over 
 sql.toCharArray(sqlQuery, str_len);
 
-  String sqlB= "INSERT INTO dataTableB(Date,Time,lat,long,Speed,Deviceid,battery,upload,BatchID ) VALUES ('"+(String)dat+"','"+(String)time+"','"+(String)latt+"','"+(String)lon+"','"+(String)speed+"','12345678','"+(String)battery+"','"+(String)uploaded+"','"+(String)batchID+"')"; 
+  String sqlB= "INSERT INTO TableB(DeviceDate,lat,longitude,Speed,Deviceid,battery,upload,BatchID ) VALUES ('"+(String)datetime+"','"+(String)latt+"','"+(String)lon+"','"+(String)speed+"','12345678','"+(String)battery+"','"+(String)uploaded+"','"+(String)batchID+"')"; 
 Serial.println(sqlB);
 // Length (with one extra character for the null terminator)
 int str_lenB = sqlB.length() + 1; 
@@ -100,28 +126,38 @@ sqlB.toCharArray(sqlQueryB, str_lenB);
   
 
 rc = db_exec(db1, sqlQuery);
-rcB = db_exec(db1, sqlQueryB);
-   if (rc != SQLITE_OK ||rcB != SQLITE_OK) {
+//rcB = db_exec(db1, sqlQueryB);
+
+   if (rc != SQLITE_OK ){//||rcB != SQLITE_OK) {
+
     sqlite3_close(db1);
        sqlite3_close(db2);
        return;
    }
    sql="i";
-
-   rc = db_exec(db1, "Select * from dataTableB order by Sno DESC LIMIT 2 ");
+   Serial.println(sno);
+   if(sno>=14){// if a complete 4 min cylce is completed data transfer will take place
+        sno=1;
+    batch++;
+     rc = db_exec(db1, "Select * from TableA order by Sno DESC LIMIT 3 ");
+      serializeJsonPretty(array,obj);
+   Serial.println(obj);
+   int result=1,count=1;
+   while(result==1&&count<=2){
+    count++;
+       sim800init();
+     result=postJsonData(obj);
+   }
+     
    if (rc != SQLITE_OK) {
+    
        sqlite3_close(db1);
        sqlite3_close(db2);
        return;
    }
+   }
 
    sqlite3_close(db1);
    sqlite3_close(db2);
-     if(sno==3)
-  {
-    sno=1;
-    batch++;
-  }
   
-  delay(5000);
 }
