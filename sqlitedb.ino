@@ -62,7 +62,7 @@ sqlite3_initialize();
    // Open database 1
    if (openDb("/sd/testinggps.db", &db1))
        return;
-   if (openDb("/sd/mdr512.db", &db2))
+   if (openDb("/sd/testinggps2.db", &db2))
        return;
 
      rc = db_exec(db1, "CREATE TABLE IF NOT EXISTS TableA (Sno INTEGER PRIMARY KEY, DeviceDate TEXT , lat TEXT ,longitude TEXT , Speed TEXT , Deviceid TEXT , battery TEXT , upload TEXT , BatchID TEXT )");
