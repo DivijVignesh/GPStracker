@@ -11,6 +11,7 @@
 const char APN[] = "internet";
 const char URL[] = "http://103.40.48.140:85/InsertPower";
 const char CONTENT_TYPE[] = "application/json";
+const char HEADERS[] = "keep-alive";
 
 
 SIM800L* sim800l;
@@ -27,24 +28,21 @@ void sim800init() {
   sim800l = new SIM800L((Stream *)serial, SIM800_RST_PIN, 200, 512);
 
   // Equivalent line with the debug enabled on the Serial
-//   sim800l = new SIM800L((Stream *)&Serial1, SIM800_RST_PIN, 200, 512, (Stream *)&Serial);
+//   sim800l = new SIM800L((Stream *)&serial, SIM800_RST_PIN, 200, 512, (Stream *)&Serial);
 
   // Setup module for GPRS communication
   setupModule();
 }
  
 int postJsonData(String data) {
-String str = data; 
-byte flag;
-// Length (with one extra character for the null terminator)
-int str_len = str.length() + 1; 
-
-// Prepare the character array (the buffer) 
-char content_array[str_len];
-
-// Copy it over 
-str.toCharArray(content_array, str_len);
-  
+  String str = data; 
+  byte flag;
+  // Length (with one extra character for the null terminator)
+  int str_len = str.length() + 1; 
+  // Prepare the character array (the buffer) 
+  char content_array[str_len];
+  // Copy it over 
+  str.toCharArray(content_array, str_len);
   // Establish GPRS connectivity (5 trials)
   bool connected = false;
   for(uint8_t i = 0; i < 5 && !connected; i++) {
@@ -60,13 +58,12 @@ str.toCharArray(content_array, str_len);
     Serial.println(F("Reset the module."));
     sim800l->reset();
     setupModule();
-
   }
 
   Serial.println(F("Start HTTP POST..."));
 
   // Do HTTP POST communication with 10s for the timeout (read and write)
-  uint16_t rc = sim800l->doPost(URL, CONTENT_TYPE, content_array, 10000, 10000); //PAYLOAD
+  uint16_t rc = sim800l->doPost(URL,CONTENT_TYPE, content_array, 20000, 25000); //PAYLOAD
    if(rc == 200) {
     // Success, output the data received on the serial
     Serial.print(F("HTTP POST successful ("));
@@ -74,6 +71,8 @@ str.toCharArray(content_array, str_len);
     Serial.println(F(" bytes)"));
     Serial.print(F("Received : "));
     Serial.println(sim800l->getDataReceived());
+    if((String)(sim800l->getDataReceived())=="\"SUCCESS\"")
+    flag=0;
   } else {
     // Failed...
     Serial.print(F("HTTP POST error "));

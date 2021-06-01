@@ -4,20 +4,20 @@ StaticJsonDocument<5000> doc;
 JsonArray array ;
 String obj;
    
-   sqlite3 *db1;
-   sqlite3 *db2;
+sqlite3 *db1;
+sqlite3 *db2;
    
 //   char *zErrMsg = 0;
 
-   int rc;
+int rc;
 const char* data = "Callback function called";
 static int callback(void *data, int argc, char **argv, char **azColName){
-  JsonObject object = doc.createNestedObject(); // JSON objects for NAME and VALUE of the counter
-   int i;
-   Serial.printf("%s: ", (const char*)data);
-   for (i = 0; i<argc; i++){
-        object[(String)azColName[i]]=(String)argv[i];
-       Serial.printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+JsonObject object = doc.createNestedObject(); // JSON objects for NAME and VALUE of the counter
+int i;
+Serial.printf("%s: ", (const char*)data);
+for (i = 0; i<argc; i++){
+    object[(String)azColName[i]]=(String)argv[i];
+    Serial.printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
    }
    Serial.printf("\n");
 
@@ -77,6 +77,12 @@ sqlite3_initialize();
        sqlite3_close(db2);
        return;
    }
+     rc = db_exec(db1, "DELETE FROM TableA WHERE upload='0'");
+   if (rc != SQLITE_OK) {
+       sqlite3_close(db1);
+       sqlite3_close(db2);
+       return;
+   }
 
     dbInsert(latt,lon,battery,speed,uploaded,datetime,batchID);
 //    dbSelect();
@@ -103,43 +109,44 @@ array = doc.to<JsonArray>();
   batchID=batch;
   int rc,rcB;
   String sql= "INSERT INTO TableA(DeviceDate,lat,longitude,Speed,Deviceid,battery,upload,BatchID ) VALUES ('"+(String)datetime+"','"+(String)latt+"','"+(String)lon+"','"+(String)speed+"','12345678','"+(String)battery+"','"+(String)uploaded+"','"+(String)batchID+"')"; 
-Serial.println(sql);
-// Length (with one extra character for the null terminator)
-int str_len = sql.length() + 1; 
-
-// Prepare the character array (the buffer) 
-char sqlQuery[str_len];
-
-// Copy it over 
-sql.toCharArray(sqlQuery, str_len);
-
+  Serial.println(sql);
+  // Length (with one extra character for the null terminator)
+  int str_len = sql.length() + 1; 
+  // Prepare the character array (the buffer) 
+  char sqlQuery[str_len];
+  // Copy it over 
+  sql.toCharArray(sqlQuery, str_len);
   String sqlB= "INSERT INTO TableB(DeviceDate,lat,longitude,Speed,Deviceid,battery,upload,BatchID ) VALUES ('"+(String)datetime+"','"+(String)latt+"','"+(String)lon+"','"+(String)speed+"','12345678','"+(String)battery+"','"+(String)uploaded+"','"+(String)batchID+"')"; 
-Serial.println(sqlB);
-// Length (with one extra character for the null terminator)
-int str_lenB = sqlB.length() + 1; 
+  Serial.println(sqlB);
+  // Length (with one extra character for the null terminator)
+  int str_lenB = sqlB.length() + 1; 
 
-// Prepare the character array (the buffer) 
-char sqlQueryB[str_lenB];
+  // Prepare the character array (the buffer) 
+  char sqlQueryB[str_lenB];
 
-// Copy it over 
-sqlB.toCharArray(sqlQueryB, str_lenB);
+  // Copy it over 
+  sqlB.toCharArray(sqlQueryB, str_lenB);
   
 
-rc = db_exec(db1, sqlQuery);
-//rcB = db_exec(db1, sqlQueryB);
+  rc = db_exec(db1, sqlQuery);
+  rcB = db_exec(db1, sqlQueryB);
 
-   if (rc != SQLITE_OK ){//||rcB != SQLITE_OK) {
-
+  if (rc != SQLITE_OK ) {
     sqlite3_close(db1);
-       sqlite3_close(db2);
-       return;
+    sqlite3_close(db2);
+    return;
+   }
+   if(rcB != SQLITE_OK){
+    sqlite3_close(db1);
+    sqlite3_close(db2);
+    return;
    }
    sql="i";
    Serial.println(sno);
    if(sno>=14){// if a complete 4 min cylce is completed data transfer will take place
         sno=1;
     batch++;
-     rc = db_exec(db1, "Select * from TableA order by Sno DESC LIMIT 3 ");
+     rc = db_exec(db1, "Select * from TableA WHERE upload=1 order by Sno DESC LIMIT 7 ");
       serializeJsonPretty(array,obj);
    Serial.println(obj);
    int result=1,count=1;
@@ -148,7 +155,9 @@ rc = db_exec(db1, sqlQuery);
        sim800init();
      result=postJsonData(obj);
    }
-     
+   if(result==0){
+    rc =db_exec(db1,"UPDATE TableA SET upload='0' WHERE upload='1'");
+   }
    if (rc != SQLITE_OK) {
     
        sqlite3_close(db1);
@@ -159,5 +168,4 @@ rc = db_exec(db1, sqlQuery);
 
    sqlite3_close(db1);
    sqlite3_close(db2);
-  
 }
