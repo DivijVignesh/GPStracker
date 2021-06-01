@@ -13,7 +13,6 @@ RTC_DATA_ATTR int sno = 1;
 
 
 void setup() {
-// SoftSerial.begin(9600);
     gpsinit();
    Serial.begin(115200);
    
