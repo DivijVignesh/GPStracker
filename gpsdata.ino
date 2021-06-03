@@ -3,36 +3,42 @@
 #include <TinyGPS++.h>           // Include TinyGPS++ library
 #include <SoftwareSerial.h>      // Include software serial library
  
-RTC_DATA_ATTR TinyGPSPlus gps;
+//RTC_DATA_ATTR
+TinyGPSPlus gps;
  
 #define S_RX    26          // Define software serial RX pin
 #define S_TX    25        // Define software serial TX pin
-  RTC_DATA_ATTR SoftwareSerial SoftSerial(26, 25);
+//  RTC_DATA_ATTR 
+  SoftwareSerial SoftSerial(26, 25);
+  // Configure SoftSerial library
+
+  float battery=0.0,speed=0.0;
+  byte uploaded=1,signl=1;
+  String dat="2021-01-01",time1="01:01:01.100",latt="9.0", lon="0.0";
+  int batchID=10;
 
 void gpsinit(){
   SoftSerial.begin(9600);
 }
 void getGpsData(){
-  // Configure SoftSerial library
-  Serial.println("Getting GPSdata");
-  float latt=9.0, lon=0.0,battery=0.0,speed=0.0;
-  byte uploaded=1;
-  String dat="2021-01-01",time="01:01:01.100";
-  int batchID=10;
-  Serial.println(SoftSerial.read());
+
+  while(true){
   while (SoftSerial.available() > 0) 
   {
-    Serial.println("Getting Gps ");
+
+//    Serial.println("Getting Gps ");
     if (gps.encode(SoftSerial.read())) {
+      signl=0;
       Serial.println("Getting Gps 1 ");
       if (gps.location.isValid()) {
         Serial.print("Latitude   = ");
         Serial.println(gps.location.lat(), 6);
-        latt=gps.location.lat();
+        latt=String(gps.location.lat(),6);
         Serial.print("Longitude  = ");
         Serial.println(gps.location.lng(), 6);
-        lon=gps.location.lng();
+        lon=String(gps.location.lng(), 6);
         Serial.println("GPS location fixed");
+//        signl=0;
       }
       else{
         Serial.println("Location Invalid");
@@ -63,12 +69,12 @@ void getGpsData(){
         if(gps.time.second() < 10) {sec="0"+(String)gps.time.second();  Serial.print("0");}
         else{sec=(String)gps.time.second();}
         Serial.println(gps.time.second());
-        time=hour+":"+min+":"+sec+".123";
-        Serial.println(time);
+        time1=hour+":"+min+":"+sec+".123";
+        Serial.println(time1);
       }
       else{
         Serial.println("Time Invalid");
-        Serial.println(time);
+        Serial.println(time1);
       }
  
       if (gps.date.isValid()) {
@@ -92,15 +98,19 @@ void getGpsData(){
       else{
         Serial.println("Date Invalid");
        dat="2021-01-01";
-       Serial.println(time);
+       Serial.println(time1);
     }
-    Serial.println("DB");
-  db_init(String(latt),String(lon),String(battery),String(speed),String(uploaded),(dat+" "+time),String(batchID));    
-  break;
-  }
+    }
+      if(signl==0)
+      {db_init(String(latt),String(lon),String(battery),String(speed),String(uploaded),(dat+" "+time1),String(batchID));    
+    break;
+    }
+}
+  if(signl==0)
+    break;
 }
   if (!(SoftSerial.available() > 0) ){// Gets executed when there is no gps data input
   Serial.println("No Gps signal");
-  db_init(String(latt),String(lon),String(battery),String(speed),String(uploaded),(dat+" "+time),String(batchID));
+  db_init(String(latt),String(lon),String(battery),String(speed),String(uploaded),(dat+" "+time1),String(batchID));
   }
 }
