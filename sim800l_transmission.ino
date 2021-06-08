@@ -8,7 +8,7 @@
 
 
 
-const char APN[] = "internet";
+const char APN[] = "internet";//internet
 const char URL[] = "http://103.40.48.140:85/InsertPower";
 const char CONTENT_TYPE[] = "application/json";
 const char HEADERS[] = "keep-alive";

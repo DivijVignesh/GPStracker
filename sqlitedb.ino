@@ -51,7 +51,7 @@ int db_exec(sqlite3 *db, const char *sql) {
    return rc;
 }
 
-void db_init(String latt,String lon,String battery,String speed,String uploaded,String datetime,String batchID){
+void db_init(String latt,String lon,String battery,String speed,String uploaded,String datetime,String batchID,String x, String y, String z){
   sno++;
 
 SPI.begin();
@@ -65,13 +65,13 @@ sqlite3_initialize();
    if (openDb("/sd/mdr512.db", &db2))
        return;
 
-     rc = db_exec(db1, "CREATE TABLE IF NOT EXISTS TableA (Sno INTEGER PRIMARY KEY, DeviceDate TEXT , lat TEXT ,longitude TEXT , Speed TEXT , Deviceid TEXT , battery TEXT , upload TEXT , BatchID TEXT )");
+     rc = db_exec(db1, "CREATE TABLE IF NOT EXISTS TableA (Sno INTEGER PRIMARY KEY, DeviceDate TEXT , lat TEXT ,longitude TEXT , Speed TEXT , Deviceid TEXT , battery TEXT , upload TEXT , BatchID TEXT ,  XValue TEXT ,YValue TEXT ,ZValue TEXT)");
    if (rc != SQLITE_OK) {
        sqlite3_close(db1);
        sqlite3_close(db2);
        return;
    }
-  rc = db_exec(db1, "CREATE TABLE IF NOT EXISTS TableB (Sno INTEGER PRIMARY KEY, DeviceDate TEXT , lat TEXT ,longitude TEXT , Speed TEXT , Deviceid TEXT , battery TEXT , upload TEXT , BatchID TEXT )");
+  rc = db_exec(db1, "CREATE TABLE IF NOT EXISTS TableB (Sno INTEGER PRIMARY KEY, DeviceDate TEXT , lat TEXT ,longitude TEXT , Speed TEXT , Deviceid TEXT , battery TEXT , upload TEXT , BatchID TEXT,  XValue TEXT ,YValue TEXT ,ZValue TEXT )");
    if (rc != SQLITE_OK) {
        sqlite3_close(db1);
        sqlite3_close(db2);
@@ -84,7 +84,7 @@ sqlite3_initialize();
        return;
    }
 
-    dbInsert(latt,lon,battery,speed,uploaded,datetime,batchID);
+    dbInsert(latt,lon,battery,speed,uploaded,datetime,batchID,x,y,z);
 //    dbSelect();
 
 }
@@ -103,12 +103,12 @@ void dbSelect(){
    sqlite3_close(db2);
 }
  
-void dbInsert(String latt,String lon,String battery,String speed,String uploaded,String datetime,String batchID)
+void dbInsert(String latt,String lon,String battery,String speed,String uploaded,String datetime,String batchID,String x,String y,String z)
 {
 array = doc.to<JsonArray>();
   batchID=batch;
   int rc,rcB;
-  String sql= "INSERT INTO TableA(DeviceDate,lat,longitude,Speed,Deviceid,battery,upload,BatchID ) VALUES ('"+(String)datetime+"','"+(String)latt+"','"+(String)lon+"','"+(String)speed+"','12345678','"+(String)battery+"','"+(String)uploaded+"','"+(String)batchID+"')"; 
+  String sql= "INSERT INTO TableA(DeviceDate,lat,longitude,Speed,Deviceid,battery,upload,BatchID,XValue,YValue,ZValue) VALUES ('"+(String)datetime+"','"+(String)latt+"','"+(String)lon+"','"+(String)speed+"','12345678','"+(String)battery+"','"+(String)uploaded+"','"+(String)batchID+"','"+(String)x+"','"+(String)y+"','"+(String)z+"')"; 
   Serial.println(sql);
   // Length (with one extra character for the null terminator)
   int str_len = sql.length() + 1; 
@@ -116,7 +116,7 @@ array = doc.to<JsonArray>();
   char sqlQuery[str_len];
   // Copy it over 
   sql.toCharArray(sqlQuery, str_len);
-  String sqlB= "INSERT INTO TableB(DeviceDate,lat,longitude,Speed,Deviceid,battery,upload,BatchID ) VALUES ('"+(String)datetime+"','"+(String)latt+"','"+(String)lon+"','"+(String)speed+"','12345678','"+(String)battery+"','"+(String)uploaded+"','"+(String)batchID+"')"; 
+  String sqlB= "INSERT INTO TableB(DeviceDate,lat,longitude,Speed,Deviceid,battery,upload,BatchID,XValue,YValue,ZValue) VALUES ('"+(String)datetime+"','"+(String)latt+"','"+(String)lon+"','"+(String)speed+"','12345678','"+(String)battery+"','"+(String)uploaded+"','"+(String)batchID+"','"+(String)x+"','"+(String)y+"','"+(String)z+"')"; 
   Serial.println(sqlB);
   // Length (with one extra character for the null terminator)
   int str_lenB = sqlB.length() + 1; 
@@ -143,10 +143,10 @@ array = doc.to<JsonArray>();
    }
    sql="i";
    Serial.println(sno);
-   if(sno>=14){// if a complete 4 min cylce is completed data transfer will take place
+   if(sno>=10){// if a complete 4 min cylce is completed data transfer will take place
         sno=1;
     batch++;
-     rc = db_exec(db1, "Select * from TableA WHERE upload=1 order by Sno DESC LIMIT 7 ");
+     rc = db_exec(db1, "Select * from TableA WHERE upload=1 order by Sno DESC LIMIT 14 ");
       serializeJsonPretty(array,obj);
    Serial.println(obj);
    int result=1,count=1;

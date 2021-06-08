@@ -16,12 +16,12 @@ TinyGPSPlus gps;
   byte uploaded=1,signl=1;
   String dat="2021-01-01",time1="01:01:01.100",latt="9.0", lon="0.0";
   int batchID=10;
-
+  float x=0.0,y=0.0,z=0.0;
 void gpsinit(){
   SoftSerial.begin(9600);
 }
 void getGpsData(){
-
+  getAccData(&x,&y,&z);
   while(true){
   while (SoftSerial.available() > 0) 
   {
@@ -42,7 +42,14 @@ void getGpsData(){
       }
       else{
         Serial.println("Location Invalid");
-      latt=0.0, lon=0.0;
+//      latt=0.0, lon=0.0;
+              Serial.print("Latitude   = ");
+        Serial.println(gps.location.lat(), 6);
+        latt=String(gps.location.lat(),6);
+        Serial.print("Longitude  = ");
+        Serial.println(gps.location.lng(), 6);
+        lon=String(gps.location.lng(), 6);
+        Serial.println("GPS location fixed");
       }
       if (gps.speed.isValid()) {
         Serial.print("Speed      = ");
@@ -102,7 +109,7 @@ void getGpsData(){
     }
     }
       if(signl==0)
-      {db_init(String(latt),String(lon),String(battery),String(speed),String(uploaded),(dat+" "+time1),String(batchID));    
+      {db_init(String(latt),String(lon),String(battery),String(speed),String(uploaded),(dat+" "+time1),String(batchID),String(x),String(y),String (z));    
     break;
     }
 }
@@ -111,6 +118,6 @@ void getGpsData(){
 }
   if (!(SoftSerial.available() > 0) ){// Gets executed when there is no gps data input
   Serial.println("No Gps signal");
-  db_init(String(latt),String(lon),String(battery),String(speed),String(uploaded),(dat+" "+time1),String(batchID));
+  db_init(String(latt),String(lon),String(battery),String(speed),String(uploaded),(dat+" "+time1),String(batchID),String(x),String(y),String (z));
   }
 }
