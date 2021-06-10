@@ -15,7 +15,6 @@ TinyGPSPlus gps;
   float battery=0.0,speed=0.0;
   byte uploaded=1,signl=1;
   String dat="2021-01-01",time1="01:01:01.100",latt="9.0", lon="0.0";
-  int batchID=10;
   float x=0.0,y=0.0,z=0.0;
 void gpsinit(){
   SoftSerial.begin(9600);
