@@ -2,24 +2,32 @@
 
 #include <TinyGPS++.h>           // Include TinyGPS++ library
 #include <SoftwareSerial.h>      // Include software serial library
- 
+#include "tracker.h";
 //RTC_DATA_ATTR
-TinyGPSPlus gps;
+//TinyGPSPlus gps;
+//RTC_DATA_ATTR TinyGPSPlus gps;
+
  
 #define S_RX    26          // Define software serial RX pin
 #define S_TX    25        // Define software serial TX pin
 //  RTC_DATA_ATTR 
-  SoftwareSerial SoftSerial(26, 25);
+//SoftwareSerial SoftSerial(26, 25);
   // Configure SoftSerial library
 
   float battery=0.0,speed=0.0;
-  byte uploaded=1,signl=1;
+  byte uploaded=1;
   String dat="2021-01-01",time1="01:01:01.100",latt="9.0", lon="0.0";
   float x=0.0,y=0.0,z=0.0;
 void gpsinit(){
-  SoftSerial.begin(9600);
+//  TinyGPSPlus gps;
+//  SoftwareSerial SoftSerial(26, 25);
+//  SoftSerial.begin(9600);
 }
 void getGpsData(){
+  byte signl=1;
+    TinyGPSPlus gps;
+  SoftwareSerial SoftSerial(26, 25);
+  SoftSerial.begin(9600);
   getAccData(&x,&y,&z);
   while(true){
   while (SoftSerial.available() > 0) 
@@ -111,12 +119,14 @@ void getGpsData(){
       {db_init(String(latt),String(lon),String(battery),String(speed),String(uploaded),(dat+" "+time1),String(batchID),String(x),String(y),String (z));    
     break;
     }
+    Serial.println("while serial is available");
 }
+Serial.println("while true");
   if(signl==0)
     break;
 }
-  if (!(SoftSerial.available() > 0) ){// Gets executed when there is no gps data input
-  Serial.println("No Gps signal");
-  db_init(String(latt),String(lon),String(battery),String(speed),String(uploaded),(dat+" "+time1),String(batchID),String(x),String(y),String (z));
-  }
+//  if (!(SoftSerial.available() > 0) ){// Gets executed when there is no gps data input
+//  Serial.println("No Gps signal");
+//  db_init(String(latt),String(lon),String(battery),String(speed),String(uploaded),(dat+" "+time1),String(batchID),String(x),String(y),String (z));
+//  }
 }

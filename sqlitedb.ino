@@ -1,4 +1,5 @@
 #include <ArduinoJson.h>
+#include "tracker.h";
 StaticJsonDocument<5000> doc; 
 JsonArray array ;
 String obj;
@@ -8,6 +9,7 @@ sqlite3 *db2;
 
 int count=1;
 int result=1;
+
 
 void Task1code(){ //void * pvParameters ){
   Serial.print("Task1 running on core ");
@@ -23,15 +25,18 @@ SIM800L* sim800l;
         digitalWrite(2, HIGH);
     delay(100);
         digitalWrite(2, LOW);
-     delay(100);
+     delay(500);
+     
     if(isUploading==0){
       
     Serial.print("Calling Transmit");
     digitalWrite(2, HIGH);
-    delay(100);
+    
+    delay(500);
     while(result==1&&count<=2){
       count++;
 //      delay(20000);
+//      result=0;
 //      break;
       sim800init();
       result=postJsonData(obj);
@@ -55,7 +60,9 @@ SIM800L* sim800l;
 int rc;
 const char* data = "Callback function called";
 static int callback(void *data, int argc, char **argv, char **azColName){
-JsonObject object = doc.createNestedObject(); // JSON objects for NAME and VALUE of the counter
+  JsonObject object;
+  if((String)azColName[0]!="batch")
+    object= doc.createNestedObject(); // JSON objects for NAME and VALUE of the counter
 int i;
 Serial.printf("%s: ", (const char*)data);
 for (i = 0; i<argc; i++){
@@ -65,8 +72,15 @@ for (i = 0; i<argc; i++){
     Serial.print("BatchID");
     Serial.print(batch);
     Serial.println();
+    if(getBatchForUpload==0)
+    {
+      getTransmitData=batch;
+      break;
+    }else{
+    
     batchID=batch+1;
     break;
+    }
   }
     object[(String)azColName[i]]=(String)argv[i];
     Serial.printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
@@ -117,13 +131,13 @@ sqlite3_initialize();
        return;
    if (openDb("/sd/mdr512.db", &db2))
        return;
-       rc = db_exec(db1, "CREATE TABLE IF NOT EXISTS BatchTable (Sno INTEGER PRIMARY KEY, batch TEXT )");
+       rc = db_exec(db1, "CREATE TABLE IF NOT EXISTS BatchIDtable (Sno INTEGER PRIMARY KEY, batch TEXT, isUploaded TEXT )");
        if (rc != SQLITE_OK) {
        sqlite3_close(db1);
        sqlite3_close(db2);
        return;
    }
-          rc = db_exec(db1, "Select batch from BatchTable order by Sno desc LIMIT 1");
+          rc = db_exec(db1, "Select batch from BatchIDtable order by sno desc LIMIT 1");
        if (rc != SQLITE_OK) {
        sqlite3_close(db1);
        sqlite3_close(db2);
@@ -143,6 +157,12 @@ sqlite3_initialize();
        sqlite3_close(db2);
        return;
    }
+//   rc = db_exec(db1, "DELETE FROM TableA WHERE BatchID='1'");
+//   if (rc != SQLITE_OK) {
+//       sqlite3_close(db1);
+//       sqlite3_close(db2);
+//       return;
+//   }
    if(result==0){
    String deleteQ="DELETE FROM TableA WHERE BatchID='"+(String)(batch-1)+"'";
    int le= deleteQ.length()+1;
@@ -160,26 +180,17 @@ sqlite3_initialize();
 //    dbSelect();
 
 }
-void dbSelect(){
-  int rc;
-  array = doc.to<JsonArray>();
-     rc = db_exec(db1, "Select * from TableB order by Sno DESC LIMIT 2 ");
-      serializeJsonPretty(array,obj);
-   Serial.println(obj);
-   if (rc != SQLITE_OK) {
-       sqlite3_close(db1);
-       sqlite3_close(db2);
-       return;
-   }
-      sqlite3_close(db1);
-   sqlite3_close(db2);
-}
+
  
 void dbInsert(String latt,String lon,String battery,String speed,String uploaded,String datetime,String batchID,String x,String y,String z)
 {
-  
+
 array = doc.to<JsonArray>();
-  
+if(result==0){
+  updateBatch(getTransmitData);
+}
+if(isUploading!=0)
+ getUploadData(); 
   int rc,rcB;
   String sql= "INSERT INTO TableA(DeviceDate,lat,longitude,Speed,Deviceid,battery,upload,BatchID,XValue,YValue,ZValue) VALUES ('"+(String)datetime+"','"+(String)latt+"','"+(String)lon+"','"+(String)speed+"','12345678','"+(String)battery+"','"+(String)uploaded+"','"+(String)batchID+"','"+(String)x+"','"+(String)y+"','"+(String)z+"')"; 
   Serial.println(sql);
@@ -218,10 +229,10 @@ array = doc.to<JsonArray>();
    Serial.print("Sno:");
    Serial.println(sno);
    if(sno>=7){
-    isUploading=0;
+//    isUploading=0;
     sno=1;
     batch++;
-    String sql1="INSERT INTO BatchTable(batch) VALUES ('"+(String)batch+"')";
+    String sql1="INSERT INTO BatchIDtable(batch , isUploaded) VALUES ('"+(String)batch+"','1')";
     int len= sql1.length()+1;
     char query[len];
     sql1.toCharArray(query,len);
@@ -232,46 +243,64 @@ array = doc.to<JsonArray>();
        return;
    }
    sql1="i";
-   int id=batch-1;
-   String sqlSelect="Select * from TableA WHERE BatchID='"+(String)batch+"'";
-   int leng= sqlSelect.length()+1;
-   char charSelect[leng];
-   sqlSelect.toCharArray(charSelect,leng);
-
-    rc = db_exec(db1, charSelect);
-       if (rc3 != SQLITE_OK) {
-       sqlite3_close(db1);
-       sqlite3_close(db2);
-       return;
-   }
-    serializeJsonPretty(array,obj);
-    Serial.println(obj);
-//    transmit_data();
    }
    
 
    sqlite3_close(db1);
    sqlite3_close(db2);
 }
-void transmit_data()
-{
-     rc = db_exec(db1, "Select * from TableA WHERE upload=1 order by Sno DESC LIMIT 14 ");
+void dbSelect(int number){
+     String sqlSelect="Select * from TableA WHERE BatchID='"+(String)number+"'";
+   int leng= sqlSelect.length()+1;
+   char charSelect[leng];
+   sqlSelect.toCharArray(charSelect,leng);
+
+     int r = db_exec(db1, charSelect);
+//     if(array.isNull()==true){
+//      isUploading=1;
+//     }
+//     else {
+//     
+//     isUploading=0;}
       serializeJsonPretty(array,obj);
    Serial.println(obj);
-   int result=1,count=1;
-   while(result==1&&count<=2){
-    count++;
-       sim800init();
-     result=postJsonData(obj);
-   }
-   if(result==0){
-    rc =db_exec(db1,"UPDATE TableA SET upload='0' WHERE upload='1'");
-   }
-   if (rc != SQLITE_OK) {
-    
+   
+   if (r != SQLITE_OK) {
        sqlite3_close(db1);
        sqlite3_close(db2);
        return;
    }
+
+}
+void updateBatch(int number){
+       String sqlSelect="UPDATE BatchIDtable SET isUploaded='0' WHERE batch='"+(String)number+"'";
+   int leng= sqlSelect.length()+1;
+   char charSelect[leng];
+   sqlSelect.toCharArray(charSelect,leng);
+
+     int r = db_exec(db1, charSelect);
+//      serializeJsonPretty(array,obj);
+//   Serial.println(obj);
+   if (r != SQLITE_OK) {
+       sqlite3_close(db1);
+       sqlite3_close(db2);
+       return;
    }
   
+}
+void getUploadData()
+{
+  isUploading=0;
+  getBatchForUpload=0;
+  
+     int r = db_exec(db1, "Select batch from BatchIDtable WHERE isUploaded='1' ORDER BY sno LIMIT 1");
+    
+   if (r != SQLITE_OK) {
+       sqlite3_close(db1);
+       sqlite3_close(db2);
+       return;
+   }
+   getBatchForUpload=1;
+   dbSelect(getTransmitData);
+  
+}
